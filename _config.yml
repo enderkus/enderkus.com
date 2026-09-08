@@ -1,0 +1,53 @@
+# Site settings
+title: "Ender Kuş"
+tagline: "Short title/description (e.g. Software Engineer. Creator of X.)"
+description: "Short title/description (e.g. Software Engineer. Creator of X.)"
+email: "ender@enderkus.com.tr"
+author: "Ender Kuş"
+
+# Custom domain, served at the root — no baseurl subpath needed.
+url: "https://enderkus.com"
+baseurl: ""
+
+# Social links — leave blank if unused, the include hides it automatically
+social:
+  twitter: "coderbiri"
+  linkedin: "ender-k-16540a22a"
+  github: "enderkus"
+  website: ""
+  website_label: ""
+
+# ConvertKit subscription form
+# Create your form in ConvertKit under Grow > Landing Pages & Forms,
+# grab it as "Embed" > "Formatted HTML", and paste the form ID here.
+convertkit:
+  form_id: "XXXXXXX"
+
+permalink: /:title/
+
+theme: jekyll-theme-colophon
+
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+
+feed:
+  path: feed.xml
+
+markdown: kramdown
+kramdown:
+  input: GFM
+
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      layout: "post"
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - README.md
+  - vendor
+  - node_modules
