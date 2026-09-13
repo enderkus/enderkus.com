@@ -12,7 +12,7 @@ Here's what that looked like in practice. We had a retention window configured, 
 
 The only lever that actually worked was blunt: periodically drop and recreate the history tables to force an immediate reclaim. We ended up doing that roughly every six months. In practice that meant scheduling a maintenance window on a production system every team depended on for alerting, and accepting that we were throwing away months of historical data we might have wanted for capacity planning, just to buy back disk space the housekeeper should have been reclaiming on its own. It worked, but it was an operational tax we paid on a schedule, not a fix, and it was a quiet admission that the housekeeper simply isn't a viable retention mechanism once you're ingesting at that volume.
 
-Zabbix 8.0 adds ClickHouse as an alternative history storage backend, and it targets exactly this problem, not host count, not query speed, the retention mechanism itself.
+Zabbix 8.0 adds ClickHouse as an alternative history storage backend, and it speaks directly to this problem: not host count, the retention mechanism itself, plus a query speed benefit on top.
 
 ## Where the bottleneck really is
 
@@ -30,9 +30,13 @@ ClickHouse is a columnar database, and the compression alone helps: time-series 
 
 ClickHouse's `MergeTree` tables (what Zabbix's ClickHouse schema uses) are partitioned by time, and expiry is handled by a `TTL` clause tied to that partitioning. When data ages out, ClickHouse doesn't scan for expired rows and delete them one by one. It drops entire partition files once every row in them has passed the TTL. Dropping a partition is close to a filesystem operation: it doesn't matter whether that partition holds a thousand rows or a hundred million, the cost is roughly the same, and it doesn't compete with the write path the way a `DELETE` does.
 
-That's the actual fix. Not "ClickHouse can hold more data," but "ClickHouse's retention mechanism doesn't degrade as ingest volume grows," which is precisely the property our relational housekeeper never had. No twice-a-year maintenance window, no gambling on disk space, no throwing away history just to buy back room for more history.
+That's the actual fix for the retention side. Not "ClickHouse can hold more data," but "ClickHouse's retention mechanism doesn't degrade as ingest volume grows," which is precisely the property our relational housekeeper never had. No twice-a-year maintenance window, no gambling on disk space, no throwing away history just to buy back room for more history.
+
+There's a second benefit worth calling out on its own: query speed. Zabbix's graphs and dashboards mostly ask exactly the kind of question ClickHouse is built to answer fast, filter by item, filter by a time range, aggregate. A columnar, vectorized engine scanning that pattern over billions of rows should noticeably outperform the same query against a row-oriented table carrying the same volume, especially once that table has grown large enough that its indexes stop being cheap either.
 
 Worth noting: Zabbix's own housekeeper explicitly does not manage ClickHouse data at all (this is documented, not a bug). Retention there is entirely ClickHouse's `TTL`/partition-drop mechanism, doing the one job it was actually built for. The trade-off is that trends are still calculated and stored only in the SQL database, and ClickHouse isn't supported as a proxy-side history backend, only on the server, both fine limitations given trend data is a much smaller, pre-aggregated dataset compared to raw history.
+
+I'll be upfront that I haven't run this specific setup in production myself. Zabbix 8 isn't even LTS yet, this is a brand new, not-yet-battle-tested feature, and the 7,000-host story above predates it entirely, that problem got solved the old, blunt way, with a recurring table rebuild. But having lived through exactly the failure mode this history provider targets, I think it's one of the more significant additions in this release. It doesn't just add a new storage option, it replaces the specific mechanism, row-by-row deletion under sustained high-volume writes, that was the actual root cause.
 
 ## Trying it hands-on
 

@@ -12,7 +12,7 @@ Pratikte şöyle görünüyordu. Kağıt üzerinde son derece makul bir retentio
 
 İşe yarayan tek gerçek çözüm kabaydı: anlık alan kazanmak için history tablolarını periyodik olarak silip yeniden oluşturmak. Sonunda bunu yaklaşık altı ayda bir yapar hale geldik. Pratikte bu, tüm ekiplerin alerting için bağımlı olduğu bir production sistemde bakım penceresi planlamak ve housekeeper'ın kendiliğinden geri kazanması gereken disk alanını satın almak için, kapasite planlaması için işimize yarayabilecek aylarca birikmiş history verisini çöpe atmayı kabul etmek anlamına geliyordu. İşe yarıyordu, ama bu bir takvime bağladığımız bir operasyonel vergiydi, gerçek bir çözüm değil; housekeeper'ın o hacimde artık uygulanabilir bir retention mekanizması olmadığının sessiz bir itirafıydı.
 
-Zabbix 8.0, alternatif bir history storage backend olarak ClickHouse desteği ekliyor ve bu tam olarak o soruna hedef alıyor. Host sayısına değil, sorgu hızına değil, doğrudan retention mekanizmasının kendisine.
+Zabbix 8.0, alternatif bir history storage backend olarak ClickHouse desteği ekliyor ve bu tam olarak o soruna hitap ediyor: host sayısına değil, doğrudan retention mekanizmasının kendisine, üstüne bir de sorgu hızı kazancıyla birlikte.
 
 ## Darboğaz gerçekte nerede
 
@@ -30,9 +30,13 @@ ClickHouse kolon bazlı bir veritabanı ve sadece sıkıştırma bile yardımcı
 
 Zabbix'in ClickHouse şemasının kullandığı `MergeTree` tabloları zamana göre partition'lanır ve expiry, bu partition'lamayla bağlantılı bir `TTL` clause'u ile yönetilir. Veri süresi dolduğunda, ClickHouse expired satırları tarayıp tek tek silmez. İçindeki her satırın TTL'i geçtiğinde tüm partition dosyasını bir bütün olarak düşürür. Bir partition'ı düşürmek neredeyse bir dosya sistemi işlemidir: o partition'da bin satır olması ile yüz milyon satır olması arasında maliyet açısından neredeyse fark yoktur ve bir `DELETE`'in yaptığı gibi yazma yolu ile rekabet etmez.
 
-Asıl çözüm bu. Mesele "ClickHouse daha fazla veri tutabiliyor" değil, "ClickHouse'un retention mekanizması, gelen veri hacmi büyüdükçe bozulmuyor", ki bu tam olarak bizim ilişkisel housekeeper'ımızın hiçbir zaman sahip olmadığı özellik. Yılda iki kez bakım penceresi yok, disk alanına oynamak yok, sadece yeni history'e yer açmak için eski history'yi çöpe atmak yok.
+Retention tarafındaki asıl çözüm bu. Mesele "ClickHouse daha fazla veri tutabiliyor" değil, "ClickHouse'un retention mekanizması, gelen veri hacmi büyüdükçe bozulmuyor", ki bu tam olarak bizim ilişkisel housekeeper'ımızın hiçbir zaman sahip olmadığı özellik. Yılda iki kez bakım penceresi yok, disk alanına oynamak yok, sadece yeni history'e yer açmak için eski history'yi çöpe atmak yok.
+
+Ayrıca kendi başına değinilmeye değer ikinci bir fayda var: sorgu hızı. Zabbix'in grafikleri ve dashboard'ları zaten tam olarak ClickHouse'un hızlı yanıtlamak için tasarlandığı türde sorular soruyor: item'a göre filtrele, zaman aralığına göre filtrele, aggregate et. Kolon bazlı, vektörize çalışan bir motorun bu deseni milyarlarca satır üzerinde taraması, aynı hacimdeki satır bazlı bir tabloya karşı aynı sorgudan gözle görülür şekilde daha hızlı olmalı, özellikle o tablo index'lerinin de artık ucuz olmaktan çıktığı büyüklüğe ulaştığında.
 
 Belirtmekte fayda var: Zabbix'in kendi housekeeper'ı ClickHouse verisini hiç yönetmiyor (bu dokümante edilmiş bir davranış, bug değil). Oradaki retention tamamen ClickHouse'un kendi `TTL`/partition-drop mekanizmasına, yani gerçekten tasarlandığı işe bırakılmış durumda. Trade-off ise trend'lerin hâlâ sadece SQL veritabanında hesaplanıp tutulması ve ClickHouse'un proxy tarafında history backend olarak desteklenmemesi, sadece server'da çalışması; trend verisinin ham history'e kıyasla çok daha küçük, önceden aggregate edilmiş bir veri seti olduğu düşünüldüğünde ikisi de kabul edilebilir sınırlamalar.
+
+Açıkça belirtmek isterim: bu spesifik kurulumu kendim production'da çalıştırmadım. Zabbix 8 henüz LTS bile değil, bu tamamen yeni, henüz gerçek dünyada sınanmamış bir özellik; yukarıdaki 7.000 host hikayesi de bundan çok önceye ait, o sorun eski, kaba yöntemle, periyodik tablo yeniden oluşturmayla çözülmüştü. Ama tam olarak bu history provider'ın hedef aldığı başarısızlık senaryosunu yaşamış biri olarak, bunun bu sürümdeki en önemli eklemelerden biri olduğunu düşünüyorum. Sadece yeni bir depolama seçeneği eklemiyor, asıl kök nedeni, sürekli yüksek hacimli yazma altında satır satır silme işlemini, doğrudan değiştiriyor.
 
 ## Pratikte denemek
 
