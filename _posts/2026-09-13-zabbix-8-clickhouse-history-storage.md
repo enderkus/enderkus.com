@@ -1,5 +1,5 @@
 ---
-title: "Zabbix at scale: why ClickHouse history storage matters"
+title: "Zabbix 8 at scale: why ClickHouse history storage matters"
 ---
 
 At a previous company I helped run a Zabbix deployment monitoring around 7,000 hosts, a place where monitoring was not a side project, it was the platform every engineering team relied on to know whether anything was on fire. We ran it on Kubernetes specifically so the monitoring layer itself could self-heal, because if Zabbix went down, every other team went blind at exactly the moment they'd need visibility most. Downtime there wasn't an inconvenience, it was the one failure mode we designed everything else around avoiding.
