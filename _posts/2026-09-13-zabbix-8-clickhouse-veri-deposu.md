@@ -2,7 +2,7 @@
 title: "Zabbix'i büyük ölçekte işletmek: ClickHouse history storage neden önemli"
 ---
 
-Birkaç yıl önce, yaklaşık 7.000 host'u tek bir Zabbix ile izlediğimiz bir şirkette çalıştım. Orada izleme bir yan proje değildi, tüm mühendislik ekiplerinin bir şeylerin alevlenip alevlenmediğini anlamak için güvendiği platformdu. Kubernetes üzerinde çalıştırıyorduk, özellikle izleme katmanının kendisi kendini iyileştirebilsin diye; çünkü Zabbix çökerse, tam da görünürlüğe en çok ihtiyaç duyulan anda diğer bütün ekipler kör kalırdı. Orada kesinti bir rahatsızlık değildi, her şeyi etrafında tasarladığımız tek başarısızlık senaryosuydu.
+Daha önce çalıştığım bir şirkette, yaklaşık 7.000 host'u tek bir Zabbix ile izliyorduk. Orada izleme bir yan proje değildi, tüm mühendislik ekiplerinin bir şeylerin alevlenip alevlenmediğini anlamak için güvendiği platformdu. Kubernetes üzerinde çalıştırıyorduk, özellikle izleme katmanının kendisi kendini iyileştirebilsin diye; çünkü Zabbix çökerse, tam da görünürlüğe en çok ihtiyaç duyulan anda diğer bütün ekipler kör kalırdı. Orada kesinti bir rahatsızlık değildi, her şeyi etrafında tasarladığımız tek başarısızlık senaryosuydu.
 
 O platformu işletmenin zor kısmı hiçbir zaman host sayısı olmadı. Beni gerçekten uykusuz bırakan şey veriydi: ayda yaklaşık 2,5 TB yeni history satırı ve bunları silmeye yetişemeyen bir housekeeper süreci.
 
