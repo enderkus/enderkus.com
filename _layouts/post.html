@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include head.html %}
+</head>
+<body>
+{% include theme-toggle.html %}
+<div class="layout">
+<aside class="side">
+<img class="mug" src="{{ '/assets/images/blogphoto.jpg' | relative_url }}" width="76" height="76" alt="{{ site.author }}">
+<div>
+<a class="who" href="{{ '/' | relative_url }}">{{ site.title }}</a>
+<p>{{ site.tagline }}</p>
+<a class="back" href="{{ '/' | relative_url }}">&larr; Home</a>
+{% include elsewhere.html %}
+</div>
+</aside>
+<main>
+<article>
+<h1>{{ page.title }}</h1>
+<time class="pubdate" datetime="{{ page.date | date: '%Y-%m-%d' }}">{{ page.date | date: '%Y-%m-%d' }}</time>
+{{ content }}
+</article>
+{% include signup.html %}
+{% include share.html %}
+</main>
+</div>
+</body>
+</html>

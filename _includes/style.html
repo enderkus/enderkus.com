@@ -1,0 +1,121 @@
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{
+--bg:#fff;--fg:#17171a;--muted:#5f5f6b;--rule:#e7e7ec;--link:#1a47c2;
+--visited:#6b3fa0;--code-bg:#f4f4f7;--sel:#dbe6ff;
+--serif:Charter,"Bitstream Charter","Iowan Old Style",Georgia,"Times New Roman",serif;
+--sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+--mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+--bg:#131316;--fg:#e6e6ea;--muted:#9a9aa6;--rule:#2a2a31;--link:#8ab4ff;
+--visited:#c3a6ff;--code-bg:#1c1c21;--sel:#2c3d63;color-scheme:dark}}
+:root[data-theme=dark]{
+--bg:#131316;--fg:#e6e6ea;--muted:#9a9aa6;--rule:#2a2a31;--link:#8ab4ff;
+--visited:#c3a6ff;--code-bg:#1c1c21;--sel:#2c3d63;color-scheme:dark}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--serif);
+font-size:19px;line-height:1.62;text-rendering:optimizeLegibility;
+-webkit-font-smoothing:antialiased}
+::selection{background:var(--sel)}
+a{color:var(--link);text-decoration:underline;text-underline-offset:2px;
+text-decoration-thickness:1px}
+a:visited{color:var(--visited)}
+img{max-width:100%;height:auto}
+hr{border:0;border-top:1px solid var(--rule);margin:2.5rem 0}
+code,pre,kbd{font-family:var(--mono);font-size:.85em}
+code{background:var(--code-bg);padding:.1em .28em;border-radius:3px}
+p,li,h1,h2,h3,h4{overflow-wrap:break-word}
+pre{background:var(--code-bg);padding:1rem;border-radius:5px;overflow-x:auto;
+line-height:1.45}
+pre code{background:none;padding:0}
+blockquote{margin:1.6rem 0;padding-left:1.1rem;border-left:3px solid var(--rule);
+color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:.92em}
+th,td{border-bottom:1px solid var(--rule);padding:.45rem .6rem;text-align:left}
+h1,h2,h3,h4{font-family:var(--sans);line-height:1.25;margin:2.2rem 0 .8rem;
+font-weight:640;letter-spacing:-.011em}
+h1{font-size:1.85rem;margin-top:0}
+h2{font-size:1.3rem}
+h3{font-size:1.1rem}
+figure{margin:1.8rem 0}
+figcaption{font-family:var(--sans);font-size:.82rem;color:var(--muted);margin-top:.5rem}
+
+.theme{position:absolute;top:1rem;right:1rem;background:none;border:0;padding:.4rem;
+cursor:pointer;color:var(--muted);font-size:1rem;line-height:1;font-family:var(--sans);
+border-radius:4px}
+.theme:hover{color:var(--fg);background:var(--code-bg)}
+
+.home{max-width:36rem;margin:0 auto;padding:4rem 1.4rem 5rem}
+.mug{width:104px;height:104px;border-radius:50%;display:block;margin-bottom:1.3rem;object-fit:cover}
+.home h1{font-size:1.7rem;margin:0 0 .2rem}
+.tagline{font-family:var(--sans);color:var(--muted);font-size:.95rem;margin:0 0 1.4rem}
+.bio p{margin:0 0 1rem}
+.elsewhere{font-family:var(--sans);font-size:.92rem;margin:1.4rem 0 0;padding:0;
+list-style:none;display:flex;flex-wrap:wrap;gap:0 1.1rem}
+.elsewhere a{color:var(--link)}
+
+.articles{list-style:none;padding:0;margin:0}
+.articles li{margin:0;padding:.55rem 0;border-bottom:1px solid var(--rule);
+display:flex;gap:1rem;align-items:baseline}
+.articles li:last-child{border-bottom:0}
+.articles time{font-family:var(--mono);font-size:.78rem;color:var(--muted);
+flex:0 0 5.4rem;font-variant-numeric:tabular-nums}
+.articles a{text-decoration:none}
+.articles a:hover{text-decoration:underline}
+.section-label{font-family:var(--sans);font-size:.74rem;letter-spacing:.09em;
+text-transform:uppercase;color:var(--muted);margin:3rem 0 .4rem}
+
+.signup{margin-top:3rem;padding-top:1.6rem;border-top:1px solid var(--rule)}
+.signup p{font-family:var(--sans);font-size:.92rem;color:var(--muted);margin:0 0 .8rem}
+.signup form{display:flex;gap:.5rem;flex-wrap:wrap}
+.signup input[type=email]{flex:1 1 15rem;font-family:var(--sans);
+font-size:.95rem;line-height:1.3;padding:.55rem .7rem;border:1px solid var(--rule);
+border-radius:5px;background:var(--bg);color:var(--fg);
+-webkit-appearance:none;appearance:none}
+.signup input[type=email]:focus{outline:2px solid var(--link);outline-offset:-1px;
+border-color:transparent}
+.signup button{font-family:var(--sans);font-size:.95rem;line-height:1.3;padding:.55rem 1.1rem;
+border:1px solid var(--fg);border-radius:5px;background:var(--fg);color:var(--bg);
+cursor:pointer}
+.signup button:hover{opacity:.85}
+.signup .rss{font-size:.85rem;margin:.9rem 0 0}
+.hp{position:absolute;left:-9999px}
+
+.layout{display:grid;grid-template-columns:11rem minmax(0,34rem);gap:0 3.2rem;
+justify-content:center;padding:4rem 1.4rem 5rem;align-items:start}
+.side{position:sticky;top:4rem;font-family:var(--sans);font-size:.85rem;
+color:var(--muted);line-height:1.5}
+.side .mug{width:76px;height:76px;margin-bottom:.8rem}
+.side .who{display:block;color:var(--fg);font-weight:620;text-decoration:none;
+font-size:.92rem;margin-bottom:.35rem}
+.side p{margin:0}
+.side .back{display:block;margin-top:.9rem;font-size:.85rem}
+.side .elsewhere{flex-direction:column;gap:.25rem;font-size:.85rem;margin-top:1rem}
+article h1{font-size:2rem;margin:0 0 .35rem;letter-spacing:-.02em}
+.pubdate{font-family:var(--sans);font-size:.82rem;color:var(--muted);
+margin:0 0 2.2rem;display:block}
+.share{margin-top:4rem;padding-top:1.3rem;border-top:1px solid var(--rule);
+font-family:var(--sans);font-size:.88rem;color:var(--muted)}
+.share ul{list-style:none;padding:0;margin:.5rem 0 0;display:flex;flex-wrap:wrap;
+gap:0 1.1rem}
+.home-link{font-family:var(--sans);font-size:.88rem;margin-top:2.5rem;display:block}
+@media (max-width:880px){
+.layout{grid-template-columns:minmax(0,1fr);gap:2.5rem;padding-top:3rem;
+justify-content:stretch}
+.layout>main{max-width:34rem;width:100%}
+.side{position:static;display:grid;grid-template-columns:76px minmax(0,1fr);
+gap:0 1rem;align-items:center;max-width:34rem}
+.side .mug{margin-bottom:0}
+.side .elsewhere{flex-direction:row;gap:0 1rem;margin-top:.4rem}
+.side>div{grid-column:2}
+}
+@media (max-width:560px){
+body{font-size:18px}
+.home{padding-top:2.5rem}
+article h1{font-size:1.6rem}
+.signup form{flex-direction:column}
+.signup input[type=email],.signup button{width:100%}
+.share ul{flex-direction:column;gap:.6rem 0}
+}
+</style>

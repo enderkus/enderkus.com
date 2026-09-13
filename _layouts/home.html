@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+{% include head.html %}
+</head>
+<body>
+{% include theme-toggle.html %}
+<main class="home">
+<img class="mug" src="{{ '/assets/images/blogphoto.jpg' | relative_url }}" width="104" height="104" alt="{{ site.author }}">
+<h1>{{ site.title }}</h1>
+<p class="tagline">{{ site.tagline }}</p>
+<div class="bio">
+{{ content }}
+</div>
+{% include elsewhere.html %}
+
+<p class="section-label">Writing</p>
+<ul class="articles">
+{% for post in site.posts %}
+<li><time datetime="{{ post.date | date: '%Y-%m-%d' }}">{{ post.date | date: '%Y-%m-%d' }}</time><a href="{{ post.url | relative_url }}">{{ post.title }}</a></li>
+{% endfor %}
+</ul>
+
+{% include signup.html %}
+</main>
+</body>
+</html>
