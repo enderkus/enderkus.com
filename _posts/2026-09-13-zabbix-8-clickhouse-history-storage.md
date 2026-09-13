@@ -1,45 +1,37 @@
 ---
-title: "Zabbix 8 and ClickHouse: wiring up the new history storage backend"
+title: "Zabbix at scale: why ClickHouse history storage matters"
 ---
 
-Zabbix 8.0 ships a feature I'd been waiting for: **ClickHouse as a history storage provider**. Configuration data (hosts, items, triggers, users) still lives in your regular SQL database, but the high-volume history rows, the numeric, text, and log values that pile up every few seconds per item, can now be written straight to ClickHouse instead.
+A few years ago I helped run a Zabbix deployment monitoring around 7,000 hosts, on Kubernetes, because monitoring was critical infrastructure and downtime wasn't an option. Host count was never the hard part. The hard part was the data: roughly 2.5 TB a month of new history rows, and a housekeeper process that simply could not keep up with deleting them.
 
-I spent an evening setting this up in Docker to see how it behaves in practice, hit a genuinely interesting bug along the way, and turned the whole thing into a runnable demo repo. This post covers both.
+Zabbix 8.0 adds ClickHouse as an alternative history storage backend, and it directly targets that exact problem. Here's why it matters and what actually breaks at scale in the traditional setup.
 
-## Why bother with ClickHouse for this
+## Where the bottleneck really is
 
-Zabbix has always stored history in PostgreSQL or MySQL. That works, but it's a row-oriented OLTP database being asked to do an OLAP job: ingest a constant stream of timestamped values and later answer range queries like "give me every value for this item between these two timestamps" across potentially billions of rows.
+Zabbix's history tables (numeric, text, log values, one row per item per poll) live in your SQL database, Postgres or MySQL, alongside all your configuration data. At a handful of hosts this is a non-issue. At thousands of hosts polled every 30 to 60 seconds, the history tables become by far the largest and busiest thing in that database, and they grow relentlessly.
 
-ClickHouse is a columnar database built for exactly that pattern:
+The housekeeper's job is to delete rows older than your configured retention window. That's a straightforward idea that gets expensive fast in a row-oriented relational database:
 
-- **Compression.** Each column, itemid, timestamp, value, is stored and compressed separately. Time-series values tend to be similar to their neighbors, which compresses very well. You can keep months of granular history in a fraction of the disk space a row-oriented table would need.
-- **Fast range and aggregate scans.** Zabbix's own graphs and dashboards mostly issue exactly the query pattern ClickHouse is optimized for: filter by itemid, filter by a time window, aggregate. It doesn't need OLTP-style point-lookup indexes for that.
-- **It takes load off Postgres.** Once you have enough hosts and low-enough polling intervals, history writes are usually the first thing that stresses a PostgreSQL-backed Zabbix install. Moving them to a purpose-built store lets your config database breathe and lets history scale independently.
+- Deleting is a row-by-row (or batched-row) `DELETE`, which has to walk and update indexes, generate WAL/binlog, and in Postgres leaves dead tuples that only get reclaimed by `VACUUM`; in MySQL, InnoDB fragmentation accumulates similarly.
+- That deletion work competes for the same disk I/O and locks that the constant stream of inserts needs.
+- If your ingest rate is high enough, the housekeeper's delete throughput simply loses the race against new data coming in. It doesn't get a little behind, it gets permanently behind, and the gap only widens as data volume grows.
 
-The official docs are also refreshingly upfront about the trade-offs: the Zabbix housekeeper does not clean up ClickHouse data (retention is controlled by ClickHouse's own TTL clause instead), trends are still calculated and stored only in the SQL database, and ClickHouse isn't supported as a proxy-side history backend, only on the server. Worth knowing before you commit to it.
+The practical symptom is exactly what we ran into: retention set to a reasonable window on paper, but disk usage that kept climbing regardless, because deletion could never fully catch up. The only real lever we had was to periodically drop and recreate the history tables to force an immediate reclaim, something we ended up doing about every six months. It worked, but it's a maintenance-window operation, not a fix. It's an admission that the housekeeper isn't a viable retention mechanism at that volume.
 
-## The setup: Docker Compose, three agents, one bug
+## Why ClickHouse actually fixes this, not just works around it
 
-I built a stack with Postgres for config, a ClickHouse container for history, the Zabbix server and frontend, and three agents: one representing the built-in "Zabbix server" host (self-monitoring), and two throwaway "test-agent" containers to generate sample data.
+ClickHouse is a columnar database, and the compression alone helps: time-series values compress very well when stored column-by-column, so the same 2.5 TB/month of raw history can occupy a fraction of the space it would in a row store. But compression isn't the part that solves the housekeeper problem. Retention is.
 
-I brought it up, and two of the three hosts came online immediately. The one that didn't was the one you'd least expect to have trouble: **"Zabbix server" itself**. The frontend just showed it as unavailable, no data coming in for its own health metrics, while both test agents reported fine.
+ClickHouse's `MergeTree` tables (what Zabbix's ClickHouse schema uses) are partitioned by time, and expiry is handled by a `TTL` clause tied to that partitioning. When data ages out, ClickHouse doesn't scan for expired rows and delete them one by one. It drops entire partition files once every row in them has passed the TTL. Dropping a partition is close to a filesystem operation: it doesn't matter whether that partition holds a thousand rows or a hundred million, the cost is roughly the same, and it doesn't compete with the write path the way a `DELETE` does.
 
-The logs gave it away:
+That's the actual fix. It's not "ClickHouse can hold more data," it's "ClickHouse's retention mechanism doesn't degrade as ingest volume grows," which is precisely the property a relational housekeeper doesn't have at scale.
 
-```
-temporarily disabling Zabbix agent checks on host "Zabbix server": interface unavailable
-```
+Worth noting: Zabbix's own housekeeper explicitly does not manage ClickHouse data at all (this is documented, not a bug). Retention there is entirely ClickHouse's `TTL`/partition-drop mechanism, doing the one job it was actually built for. The trade-off is that trends are still calculated and stored only in the SQL database, and ClickHouse isn't supported as a proxy-side history backend, only on the server, both fine limitations given trend data is a much smaller, pre-aggregated dataset compared to raw history.
 
-Zabbix ships the built-in "Zabbix server" host with its agent interface hardcoded to `127.0.0.1:10050`. That's a sane default when the agent runs on the same machine as the server process, which is the traditional single-box install. But in this Docker Compose setup, the agent for that host is its own container, on its own IP, not sharing a network namespace with `zabbix-server`. So `zabbix-server` dutifully checked its own loopback interface, found nothing listening, and marked the host unreachable. The two test agents were fine because they'd been defined from the start with proper DNS-based interfaces pointing at their own containers, not `127.0.0.1`.
+## Trying it hands-on
 
-The fix is a one-line correction: point that interface at the agent container's DNS name on the compose network instead of `127.0.0.1`. Once I did that, "Zabbix server" came online within one polling cycle, right alongside the other two.
-
-## Making it reproducible
-
-A manual database patch isn't something I wanted to hand anyone else. So I turned the fix into a small init container that talks to the Zabbix API on first boot: it waits for the API to come up, logs in, checks whether the "Zabbix server" host interface still points at `127.0.0.1`, and repoints it at the agent container if so. It also registers the two test-agent hosts automatically, so a fresh checkout needs zero manual clicking in the UI. Both steps are idempotent, safe to run on every `docker compose up`.
-
-I bundled all of it, Postgres, ClickHouse, the schema-creation script, the Zabbix stack, and this provisioning step, into one Docker Compose file. Clone it, run `docker compose up -d`, wait about a minute, and you have a fully monitored Zabbix 8 install writing history into ClickHouse, with a Tabix UI included for poking at the ClickHouse data directly.
+If you want to see the mechanics without standing up a 7,000-host environment, I put together a small Docker Compose reference that wires up Zabbix 8's ClickHouse history provider end to end, schema included, so you can watch history land in ClickHouse and inspect it directly.
 
 **Repo:** [github.com/enderkus/zabbix8-clickhouse](https://github.com/enderkus/zabbix8-clickhouse)
 
-The README covers the architecture, the exact ClickHouse schema (mirroring [Zabbix's official setup docs](https://www.zabbix.com/documentation/8.0/en/manual/appendix/install/clickhouse_setup)), and every configuration knob. It's a learning and demo setup, not a production hardening guide: default passwords, no TLS, single-node ClickHouse. Treat it as a starting point for understanding how the pieces fit together, then harden before you go anywhere near production.
+It's a learning setup, not a production deployment guide, but it's a fast way to see the ClickHouse side of a Zabbix install before deciding whether it's worth migrating a real one.
