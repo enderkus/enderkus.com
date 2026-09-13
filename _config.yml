@@ -5,11 +5,11 @@ description: "Back-end developer with 10+ years of experience building and scali
 email: "ender@enderkus.com.tr"
 author: "Ender Kuş"
 
-# Custom domain, served at the root — no baseurl subpath needed.
+# Custom domain, served at the root: no baseurl subpath needed.
 url: "https://enderkus.com"
 baseurl: ""
 
-# Social links — leave blank if unused, the include hides it automatically
+# Social links: leave blank if unused, the include hides it automatically
 social:
   twitter: "coderbiri"
   linkedin: "ender-k-16540a22a"
