@@ -22,8 +22,8 @@ social:
 # "Embed" > "Embed script", and paste the uid/src here. Rendered in
 # _includes/signup.html (local override of the theme's default).
 convertkit:
-  uid: "7d583ba815"
-  script_src: "https://ender-kus.kit.com/7d583ba815/index.js"
+  uid: "45f02c29cb"
+  script_src: "https://ender-kus.kit.com/45f02c29cb/index.js"
 
 permalink: /:title/
 
